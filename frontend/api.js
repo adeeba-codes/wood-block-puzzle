@@ -1,5 +1,5 @@
 // api.js
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "https://woodblock-backend.onrender.com";
 
 // Load token & user from localStorage
 let authToken = localStorage.getItem("token") || null;
