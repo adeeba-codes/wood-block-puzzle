@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Wood Block Puzzle</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <div class="game-container">
+
+    <!-- HEADER -->
+    <header class="game-header">
+      <h1>Wood Block Puzzle</h1>
+      <p class="subtitle">Drag the block to the board, clear lines, and score!</p>
+    </header>
+
+    <!-- MAIN LAYOUT -->
+    <main class="game-layout">
+      <!-- LEFT: BOARD -->
+      <section class="board-section">
+        <div class="board-header">
+          <div class="score-box">
+            <div>Score</div>
+            <div id="score">0</div>
+          </div>
+          <div class="score-box">
+            <div>Level</div>
+            <div id="level">1</div>
+          </div>
+          <div class="score-box">
+            <div>High Score</div>
+            <div id="high-score">0</div>
+          </div>
+        </div>
+
+        <div id="board" class="board-grid"></div>
+
+        <!-- Ghost preview for drag-and-drop -->
+        <div id="ghost-block" class="ghost hidden"></div>
+
+        <div id="game-over" class="game-over hidden">
+          <h2>Game Over</h2>
+          <p>Your final score: <span id="final-score">0</span></p>
+          <button id="restart-from-gameover" class="btn primary">Restart</button>
+        </div>
+      </section>
+
+      <!-- RIGHT: SIDE PANEL -->
+      <aside class="side-panel">
+
+        <section class="next-block-section">
+          <h2>Next Block</h2>
+          <div id="next-block" class="block-preview"></div>
+        </section>
+
+        <section class="current-block-section">
+          <h2>Current Block</h2>
+          <p class="hint">
+            Desktop: drag &amp; drop onto the board.<br />
+            Mobile: tap a cell to place.
+          </p>
+          <div id="current-block-container" class="current-block-tray"></div>
+        </section>
+
+        <section class="controls-section">
+          <h2>Controls</h2>
+
+          <!-- Difficulty selector -->
+          <div class="controls-row">
+            <label for="difficulty-select" class="difficulty-label">Difficulty</label>
+            <select id="difficulty-select" class="difficulty-select">
+              <option value="easy">Easy</option>
+              <option value="normal" selected>Normal</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+
+          <!-- NEW: Sound toggle -->
+          <div class="controls-row">
+            <button id="sound-toggle-btn" class="btn secondary" type="button">
+              🔊 Sound: On
+            </button>
+          </div>
+
+          <div class="controls-row">
+            <button id="rotate-btn" class="btn" type="button">Rotate</button>
+            <button id="undo-btn" class="btn" type="button">Undo</button>
+          </div>
+          <div class="controls-row">
+            <button id="restart-btn" class="btn secondary" type="button">Restart Game</button>
+          </div>
+        </section>
+
+        <section class="info-section">
+          <h2>How to Play</h2>
+          <ul>
+            <li>Place blocks to fill rows or columns.</li>
+            <li>Full lines are cleared for points.</li>
+            <li>Rotate blocks to fit tight spaces.</li>
+            <li>Use <strong>Undo</strong> to revert last move.</li>
+            <li>Game ends when no valid moves remain (placeholder logic now).</li>
+          </ul>
+        </section>
+
+      </aside>
+    </main>
+
+    <!-- AUTH PANEL -->
+    <section class="auth-panel"
+      style="margin-top:15px; background:rgba(0,0,0,0.35); padding:15px; border-radius:10px;">
+
+      <h2>User Account</h2>
+      <p style="font-size:0.85rem; opacity:0.8;">
+        Login or register to save your high scores.
+      </p>
+
+      <div id="auth-message" style="margin:6px 0; font-size:0.9rem;"></div>
+
+      <div style="display:flex; gap:15px; flex-wrap:wrap;">
+
+        <!-- LOGIN -->
+        <form id="login-form" style="flex:1; min-width:220px;">
+          <h3>Login</h3>
+          <input id="login-email" type="email" placeholder="Email" required
+                 style="width:100%; padding:8px; margin:4px 0; border-radius:6px; border:none;" />
+          <input id="login-password" type="password" placeholder="Password" required
+                 style="width:100%; padding:8px; margin:4px 0; border-radius:6px; border:none;" />
+          <button type="submit" class="btn primary" style="width:100%; margin-top:6px;">
+            Login
+          </button>
+        </form>
+
+        <!-- REGISTER -->
+        <form id="register-form" style="flex:1; min-width:220px;">
+          <h3>Register</h3>
+          <input id="register-name" type="text" placeholder="Name" required
+                 style="width:100%; padding:8px; margin:4px 0; border-radius:6px; border:none;" />
+          <input id="register-email" type="email" placeholder="Email" required
+                 style="width:100%; padding:8px; margin:4px 0; border-radius:6px; border:none;" />
+          <input id="register-password" type="password" placeholder="Password" required
+                 style="width:100%; padding:8px; margin:4px 0; border-radius:6px; border:none;" />
+          <button type="submit" class="btn secondary" style="width:100%; margin-top:6px;">
+            Register
+          </button>
+        </form>
+
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+        <button id="logout-btn" class="btn" style="flex:1; min-width:140px;">Logout</button>
+        <button id="show-users-btn" class="btn" style="flex:1; min-width:140px;">Load Users (test)</button>
+      </div>
+
+      <pre id="users-output" style="
+          margin-top:10px;
+          font-size:0.8rem;
+          background:#00000055;
+          padding:10px;
+          border-radius:8px;
+          max-height:140px;
+          overflow:auto;
+      "></pre>
+    </section>
+
+    <!-- LEADERBOARD PANEL -->
+    <section class="leaderboard-panel"
+      style="margin-top:15px; background:rgba(0,0,0,0.35); padding:15px; border-radius:10px;">
+
+      <h2>Leaderboard</h2>
+      <p style="font-size:0.85rem; opacity:0.8;">
+        Top players (highest scores).
+      </p>
+
+      <button id="refresh-leaderboard-btn" class="btn" style="margin-bottom:8px;">
+        Refresh Leaderboard
+      </button>
+
+      <ol id="leaderboard-list" style="padding-left:18px; font-size:0.9rem;">
+        <!-- Filled by JavaScript -->
+      </ol>
+    </section>
+
+  </div>
+
+  <!-- SOUND EFFECTS -->
+     <audio id="snd-clear" src="sounds/clear.mp3" preload="auto"></audio>
+      <audio id="snd-click" src="sounds/click.mp3" preload="auto"></audio>
+ <audio id="snd-gameover" src="sounds/gameover.mp3" preload="auto"></audio>
+  <audio id="snd-place" src="sounds/place.mp3" preload="auto"></audio>
+
+ 
+  <!-- SCRIPTS -->
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
