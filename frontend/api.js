@@ -1,131 +1,108 @@
-// api.js
+// frontend/api.js
+
+// 🔗 BACKEND BASE URL (Render)
 const API_BASE = "https://woodblock-backend.onrender.com";
 
-// Load token & user from localStorage
-let authToken = localStorage.getItem("token") || null;
+// --- token + current user in memory + localStorage ---
+const TOKEN_KEY = "woodBlockAuthToken";
+const USER_KEY = "woodBlockCurrentUser";
+
+let authToken = localStorage.getItem(TOKEN_KEY) || null;
 let currentUser = null;
 try {
-  const savedUser = localStorage.getItem("currentUser");
-  currentUser = savedUser ? JSON.parse(savedUser) : null;
+  const rawUser = localStorage.getItem(USER_KEY);
+  if (rawUser) currentUser = JSON.parse(rawUser);
 } catch {
   currentUser = null;
 }
 
-function setToken(token) {
-  authToken = token;
-  if (token) {
-    localStorage.setItem("token", token);
-  } else {
-    localStorage.removeItem("token");
-  }
+function saveAuthState() {
+  if (authToken) localStorage.setItem(TOKEN_KEY, authToken);
+  else localStorage.removeItem(TOKEN_KEY);
+
+  if (currentUser) localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+  else localStorage.removeItem(USER_KEY);
 }
 
-function setCurrentUser(user) {
-  currentUser = user || null;
-  if (user) {
-    localStorage.setItem("currentUser", JSON.stringify(user));
-  } else {
-    localStorage.removeItem("currentUser");
-  }
-}
-
-function getCurrentUser() {
-  return currentUser;
-}
-
-// Generic request helper
+// generic helper
 async function apiRequest(path, options = {}) {
-  const headers = {
-    "Content-Type": "application/json",
-    ...(options.headers || {})
-  };
+  const url = `${API_BASE}${path}`;
+  const headers = options.headers || {};
+
+  headers["Content-Type"] = "application/json";
 
   if (authToken) {
     headers["Authorization"] = `Bearer ${authToken}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers
+  const res = await fetch(url, {
+    method: options.method || "GET",
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined,
   });
-
-  let data = {};
-  try {
-    data = await res.json();
-  } catch {
-    data = {};
-  }
 
   if (!res.ok) {
-    const msg = data.message || `API error (status ${res.status})`;
-    console.error("API error:", msg, "status:", res.status, "data:", data);
-    throw new Error(msg);
+    const errorBody = await res.json().catch(() => ({}));
+    throw new Error(errorBody.message || `API error: ${res.status}`);
   }
 
-  return data;
+  return res.json().catch(() => ({}));
 }
 
-/* ---------- AUTH ---------- */
-
-async function registerUser({ name, email, password }) {
-  const data = await apiRequest("/auth/register", {
-    method: "POST",
-    body: JSON.stringify({ name, email, password })
-  });
-  setToken(data.token);
-  setCurrentUser(data.user);
-  return data.user;
-}
-
-async function loginUser({ email, password }) {
-  const data = await apiRequest("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password })
-  });
-  setToken(data.token);
-  setCurrentUser(data.user);
-  return data.user;
-}
-
-/* ---------- USERS (TEST) ---------- */
-
-async function getUsers() {
-  return apiRequest("/users", { method: "GET" });
-}
-
-/* ---------- SCORE UPDATE ---------- */
-
-async function updateScore(score) {
-  if (!authToken) {
-    console.warn("Not logged in, skipping backend score update");
-    return null;
-  }
-  const data = await apiRequest("/score/update", {
-    method: "POST",
-    body: JSON.stringify({ score })
-  });
-  if (currentUser && typeof data.highScore === "number") {
-    currentUser.highScore = data.highScore;
-    setCurrentUser(currentUser);
-  }
-  return data;
-}
-
-/* ---------- LEADERBOARD ---------- */
-
-async function getLeaderboard() {
-  return apiRequest("/leaderboard", { method: "GET" });
-}
-
-/* ---------- EXPOSE TO WINDOW ---------- */
-
+// public API object
 window.api = {
-  setToken,
-  setCurrentUser,
-  getCurrentUser,
-  registerUser,
-  loginUser,
-  getUsers,
-  updateScore,
-  getLeaderboard
+  // allow app.js to update token/user
+  setToken(token) {
+    authToken = token;
+    saveAuthState();
+  },
+  setCurrentUser(user) {
+    currentUser = user;
+    saveAuthState();
+  },
+
+  // auth endpoints
+  async registerUser({ name, email, password }) {
+    const data = await apiRequest("/api/auth/register", {
+      method: "POST",
+      body: { name, email, password },
+    });
+    if (data.token) {
+      authToken = data.token;
+      currentUser = data.user || null;
+      saveAuthState();
+    }
+    return data.user || data;
+  },
+
+  async loginUser({ email, password }) {
+    const data = await apiRequest("/api/auth/login", {
+      method: "POST",
+      body: { email, password },
+    });
+    if (data.token) {
+      authToken = data.token;
+      currentUser = data.user || null;
+      saveAuthState();
+    }
+    return data.user || data;
+  },
+
+  // test users list
+  async getUsers() {
+    return apiRequest("/api/users");
+  },
+
+  // high score update
+  async updateScore(score) {
+    return apiRequest("/api/score/update", {
+      method: "POST",
+      body: { score },
+    });
+  },
+
+  // leaderboard
+  async getLeaderboard() {
+    return apiRequest("/api/leaderboard");
+  },
 };
