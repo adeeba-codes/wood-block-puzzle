@@ -514,6 +514,65 @@ function canPlaceAt(r, c) {
 }
 
 /* ======================================================
+   REAL GAME-OVER LOGIC HELPERS
+   (check if any valid move exists for current or next block)
+====================================================== */
+
+// get up to 4 unique rotations of a shape (0°, 90°, 180°, 270°)
+function getUniqueRotations(shape) {
+  const rotations = [];
+  const seen = new Set();
+  let cur = shape;
+
+  for (let i = 0; i < 4; i++) {
+    const key = cur.map((row) => row.join("")).join("|");
+    if (!seen.has(key)) {
+      seen.add(key);
+      rotations.push(cur);
+    }
+    cur = rotateMatrix(cur);
+  }
+
+  return rotations;
+}
+
+// generic "can place this shape at r,c on the board?" (uses global grid/rows/cols)
+function canPlaceShapeAtOnBoard(shape, h, w, r, c) {
+  for (let rr = 0; rr < h; rr++) {
+    for (let cc = 0; cc < w; cc++) {
+      if (!shape[rr][cc]) continue;
+      const br = r + rr;
+      const bc = c + cc;
+      if (br < 0 || br >= rows || bc < 0 || bc >= cols) return false;
+      if (grid[br][bc] === 1) return false;
+    }
+  }
+  return true;
+}
+
+// does this block have ANY valid placement (with any rotation) on the current grid?
+function hasAnyValidMoveForBlock(block) {
+  if (!block) return false;
+
+  const rotations = getUniqueRotations(block.shape);
+
+  for (const shape of rotations) {
+    const h = shape.length;
+    const w = shape[0].length;
+
+    for (let r = 0; r <= rows - h; r++) {
+      for (let c = 0; c <= cols - w; c++) {
+        if (canPlaceShapeAtOnBoard(shape, h, w, r, c)) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+/* ======================================================
    DRAG & DROP WITH GHOST PREVIEW
 ====================================================== */
 function handleBlockDragStart(e) {
@@ -653,6 +712,8 @@ function placeBlock(r, c) {
   currentBlock = null;
   renderCurrentBlock();
   advanceBlocks();
+
+  // 🔥 REAL GAME-OVER CHECK: after we have a fresh current & next block
   checkGameOver();
 
   // save after every move
@@ -679,11 +740,13 @@ function updateScoreAndLevel(pts) {
 }
 
 /* ======================================================
-   GAME OVER (placeholder)
+   GAME OVER (REAL: NO VALID MOVES LEFT)
 ====================================================== */
 function checkGameOver() {
-  // placeholder: game over at score >= 250
-  if (score >= 250) {
+  const hasMoveCurrent = hasAnyValidMoveForBlock(currentBlock);
+  const hasMoveNext = hasAnyValidMoveForBlock(nextBlock);
+
+  if (!hasMoveCurrent && !hasMoveNext) {
     handleGameOver();
   }
 }
@@ -796,7 +859,6 @@ if (rotateBtn) {
   });
 }
 
-
 /* ======================================================
    DIFFICULTY CHANGE HANDLER
 ====================================================== */
@@ -810,7 +872,7 @@ if (difficultySelectEl) {
 }
 
 /* ======================================================
-   AUTH + USERS + LEADERBOARD (unchanged)
+   AUTH + USERS + LEADERBOARD
 ====================================================== */
 const authMessageEl = document.getElementById("auth-message");
 
