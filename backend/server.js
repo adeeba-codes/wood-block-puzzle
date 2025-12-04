@@ -88,20 +88,22 @@ app.post("/api/auth/register", async (req, res) => {
       process.env.JWT_SECRET || "secret"
     );
 
-    res.json({
+    // ✅ NEW: send 201 Created
+    return res.status(201).json({
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        highScore: user.highScore
+        highScore: user.highScore,
       },
-      token
+      token,
     });
   } catch (err) {
     console.error("Register error:", err);
-    res.status(500).json({ message: "Server error during register" });
+    return res.status(500).json({ message: "Server error during register" });
   }
 });
+
 
 // LOGIN
 app.post("/api/auth/login", async (req, res) => {
