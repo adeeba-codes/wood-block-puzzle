@@ -43,6 +43,8 @@ let grid = [];
 let score = 0;
 let level = 1;
 let highScore = Number(localStorage.getItem(HIGH_SCORE_KEY) || 0);
+let comboCount = 0;
+
 
 // difficulty (load from localStorage or default normal)
 let difficulty = localStorage.getItem(DIFFICULTY_KEY) || "normal";
@@ -407,6 +409,15 @@ function clearCompletedLines() {
       }
     }
   }
+  function isBoardEmpty() {
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (grid[r][c] === 1) return false;
+    }
+  }
+  return true;
+}
+
 
   // existing pop animation
   flashCells(clearedCells);
@@ -698,16 +709,63 @@ function placeBlock(r, c) {
     }
   }
 
-  flashCells(newlyFilled);
-  renderBoard();
-  updateScoreAndLevel(10); // base points
-  playSound(sndPlace);
+flashCells(newlyFilled);
+renderBoard();
+playSound(sndPlace);
 
-  const linesCleared = clearCompletedLines();
-  if (linesCleared > 0) {
-    updateScoreAndLevel(linesCleared * 50);
-    playSound(sndClear);
+// ---- NEW SCORING LOGIC ----
+const cellsPlaced = newlyFilled.length;
+const linesCleared = clearCompletedLines();
+
+let moveScore = 0;
+
+// 1) base points per cell
+moveScore += cellsPlaced;
+
+// 2) points for cleared lines
+if (linesCleared > 0) {
+  const baseLinePoints = 10;
+  moveScore += baseLinePoints * linesCleared;
+
+  // extra bonus for multi-line clear in one move
+  if (linesCleared > 1) {
+    moveScore += 5 * (linesCleared - 1);
   }
+
+  // 3) combo handling
+  comboCount += 1;
+  moveScore += comboCount * 5; // combo bonus
+
+  playSound(sndClear);
+} else {
+  // reset combo if no lines cleared this move
+  comboCount = 0;
+}
+
+// 4) perfect clear bonus
+if (linesCleared > 0 && isBoardEmpty()) {
+  moveScore += 50;
+}
+
+// 5) difficulty multiplier
+let multiplier = 1;
+if (difficulty === "normal") multiplier = 1.2;
+else if (difficulty === "hard") multiplier = 1.5;
+
+moveScore = Math.round(moveScore * multiplier);
+
+// finally apply the score
+updateScoreAndLevel(moveScore);
+// ----------------------------
+
+currentBlock = null;
+renderCurrentBlock();
+advanceBlocks();
+checkGameOver();
+
+// save after every move
+saveGameState();
+
 
   currentBlock = null;
   renderCurrentBlock();
@@ -737,18 +795,6 @@ function updateScoreAndLevel(pts) {
 
   level = Math.floor(score / 100) + 1;
   if (levelEl) levelEl.textContent = level;
-}
-
-/* ======================================================
-   GAME OVER (REAL: NO VALID MOVES LEFT)
-====================================================== */
-function checkGameOver() {
-  const hasMoveCurrent = hasAnyValidMoveForBlock(currentBlock);
-  const hasMoveNext = hasAnyValidMoveForBlock(nextBlock);
-
-  if (!hasMoveCurrent && !hasMoveNext) {
-    handleGameOver();
-  }
 }
 
 function handleGameOver() {
