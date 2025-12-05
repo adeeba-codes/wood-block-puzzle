@@ -43,8 +43,6 @@ let grid = [];
 let score = 0;
 let level = 1;
 let highScore = Number(localStorage.getItem(HIGH_SCORE_KEY) || 0);
-let comboCount = 0;
-
 
 // difficulty (load from localStorage or default normal)
 let difficulty = localStorage.getItem(DIFFICULTY_KEY) || "normal";
@@ -71,6 +69,9 @@ let undoStack = [];
 let isDragging = false;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
+
+// NEW: combo counter for scoring
+let comboCount = 0;
 
 /* ======================================================
    SOUND HELPERS
@@ -214,6 +215,7 @@ function saveGameState() {
       difficulty,
       currentBlock,
       nextBlock,
+      comboCount,
     };
     localStorage.setItem(STATE_KEY, JSON.stringify(state));
   } catch (err) {
@@ -251,6 +253,8 @@ function loadSavedGameOrNew() {
       localStorage.setItem(DIFFICULTY_KEY, difficulty);
       if (difficultySelectEl) difficultySelectEl.value = difficulty;
     }
+
+    comboCount = Number(state.comboCount) || 0;
 
     // restore blocks
     currentBlock = state.currentBlock || null;
@@ -334,12 +338,12 @@ function flashCells(cells) {
     setTimeout(() => cell.classList.remove("just-filled"), 250);
   });
 }
+
 function sparkleCells(cells) {
   cells.forEach(([r, c]) => {
     const cell = getCellElement(r, c);
     if (!cell) return;
     cell.classList.add("sparkle");
-    // remove sparkle class after animation
     setTimeout(() => {
       cell.classList.remove("sparkle");
     }, 500);
@@ -409,24 +413,22 @@ function clearCompletedLines() {
       }
     }
   }
-  function isBoardEmpty() {
+
+  flashCells(clearedCells);
+  sparkleCells(clearedCells);
+  renderBoard();
+
+  return fullRows.length + fullCols.length;
+}
+
+// NEW: check if the entire board is empty
+function isBoardEmpty() {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (grid[r][c] === 1) return false;
     }
   }
   return true;
-}
-
-
-  // existing pop animation
-  flashCells(clearedCells);
-  // NEW: sparkle overlay
-  sparkleCells(clearedCells);
-
-  renderBoard();
-
-  return fullRows.length + fullCols.length;
 }
 
 /* ======================================================
@@ -506,81 +508,23 @@ function buildGhostBlock(shape) {
   }
 }
 
-function canPlaceAt(r, c) {
-  if (!currentBlock) return false;
-  const shape = currentBlock.shape;
-  const h = currentBlock.height;
-  const w = currentBlock.width;
-
-  for (let rr = 0; rr < h; rr++) {
-    for (let cc = 0; cc < w; cc++) {
-      if (!shape[rr][cc]) continue;
-      const br = r + rr;
-      const bc = c + cc;
-      if (br < 0 || br >= rows || bc < 0 || bc >= cols) return false;
-      if (grid[br][bc] === 1) return false;
-    }
-  }
-  return true;
-}
-
-/* ======================================================
-   REAL GAME-OVER LOGIC HELPERS
-   (check if any valid move exists for current or next block)
-====================================================== */
-
-// get up to 4 unique rotations of a shape (0°, 90°, 180°, 270°)
-function getUniqueRotations(shape) {
-  const rotations = [];
-  const seen = new Set();
-  let cur = shape;
-
-  for (let i = 0; i < 4; i++) {
-    const key = cur.map((row) => row.join("")).join("|");
-    if (!seen.has(key)) {
-      seen.add(key);
-      rotations.push(cur);
-    }
-    cur = rotateMatrix(cur);
-  }
-
-  return rotations;
-}
-
-// generic "can place this shape at r,c on the board?" (uses global grid/rows/cols)
-function canPlaceShapeAtOnBoard(shape, h, w, r, c) {
-  for (let rr = 0; rr < h; rr++) {
-    for (let cc = 0; cc < w; cc++) {
-      if (!shape[rr][cc]) continue;
-      const br = r + rr;
-      const bc = c + cc;
-      if (br < 0 || br >= rows || bc < 0 || bc >= cols) return false;
-      if (grid[br][bc] === 1) return false;
-    }
-  }
-  return true;
-}
-
-// does this block have ANY valid placement (with any rotation) on the current grid?
-function hasAnyValidMoveForBlock(block) {
+// UPDATED: canPlaceAt now can take an optional block param
+function canPlaceAt(r, c, block = currentBlock) {
   if (!block) return false;
+  const shape = block.shape;
+  const h = block.height;
+  const w = block.width;
 
-  const rotations = getUniqueRotations(block.shape);
-
-  for (const shape of rotations) {
-    const h = shape.length;
-    const w = shape[0].length;
-
-    for (let r = 0; r <= rows - h; r++) {
-      for (let c = 0; c <= cols - w; c++) {
-        if (canPlaceShapeAtOnBoard(shape, h, w, r, c)) {
-          return true;
-        }
-      }
+  for (let rr = 0; rr < h; rr++) {
+    for (let cc = 0; cc < w; cc++) {
+      if (!shape[rr][cc]) continue;
+      const br = r + rr;
+      const bc = c + cc;
+      if (br < 0 || br >= rows || bc < 0 || bc >= cols) return false;
+      if (grid[br][bc] === 1) return false;
     }
   }
-
-  return false;
+  return true;
 }
 
 /* ======================================================
@@ -684,7 +628,7 @@ function handleBoardDrop(e) {
 }
 
 /* ======================================================
-   PLACE BLOCK + CLEAR LINES + SAVE
+   PLACE BLOCK + CLEAR LINES + SAVE (with NEW SCORING)
 ====================================================== */
 function placeBlock(r, c) {
   if (!currentBlock) return;
@@ -709,69 +653,62 @@ function placeBlock(r, c) {
     }
   }
 
-flashCells(newlyFilled);
-renderBoard();
-playSound(sndPlace);
+  flashCells(newlyFilled);
+  renderBoard();
+  playSound(sndPlace);
 
-// ---- NEW SCORING LOGIC ----
-const cellsPlaced = newlyFilled.length;
-const linesCleared = clearCompletedLines();
+  // ---------- NEW SCORING LOGIC ----------
+  const cellsPlaced = newlyFilled.length;
+  const linesCleared = clearCompletedLines();
 
-let moveScore = 0;
+  let moveScore = 0;
 
-// 1) base points per cell
-moveScore += cellsPlaced;
+  // 1) base points per cell
+  moveScore += cellsPlaced;
 
-// 2) points for cleared lines
-if (linesCleared > 0) {
-  const baseLinePoints = 10;
-  moveScore += baseLinePoints * linesCleared;
+  // 2) points for cleared lines + combo
+  if (linesCleared > 0) {
+    const baseLinePoints = 10;
+    moveScore += baseLinePoints * linesCleared;
 
-  // extra bonus for multi-line clear in one move
-  if (linesCleared > 1) {
-    moveScore += 5 * (linesCleared - 1);
+    // extra bonus if you clear more than 1 line at once
+    if (linesCleared > 1) {
+      moveScore += 5 * (linesCleared - 1);
+    }
+
+    // combo: clearing lines in consecutive moves
+    comboCount += 1;
+    moveScore += comboCount * 5; // combo bonus
+
+    playSound(sndClear);
+  } else {
+    // no lines cleared → reset combo
+    comboCount = 0;
   }
 
-  // 3) combo handling
-  comboCount += 1;
-  moveScore += comboCount * 5; // combo bonus
+  // 3) perfect clear bonus (board empty after this move)
+  if (linesCleared > 0 && isBoardEmpty()) {
+    moveScore += 50;
+  }
 
-  playSound(sndClear);
-} else {
-  // reset combo if no lines cleared this move
-  comboCount = 0;
-}
+  // 4) difficulty multiplier
+  let multiplier = 1;
+  if (difficulty === "normal") multiplier = 1.2;
+  else if (difficulty === "hard") multiplier = 1.5;
 
-// 4) perfect clear bonus
-if (linesCleared > 0 && isBoardEmpty()) {
-  moveScore += 50;
-}
+  moveScore = Math.round(moveScore * multiplier);
 
-// 5) difficulty multiplier
-let multiplier = 1;
-if (difficulty === "normal") multiplier = 1.2;
-else if (difficulty === "hard") multiplier = 1.5;
+  console.log(
+    `Move: +${moveScore} (cells=${cellsPlaced}, lines=${linesCleared}, combo=${comboCount}, difficulty=${difficulty})`
+  );
 
-moveScore = Math.round(moveScore * multiplier);
-
-// finally apply the score
-updateScoreAndLevel(moveScore);
-// ----------------------------
-
-currentBlock = null;
-renderCurrentBlock();
-advanceBlocks();
-checkGameOver();
-
-// save after every move
-saveGameState();
-
+  // apply to total score
+  updateScoreAndLevel(moveScore);
+  // ---------- END NEW SCORING LOGIC ----------
 
   currentBlock = null;
   renderCurrentBlock();
   advanceBlocks();
-
-  // 🔥 REAL GAME-OVER CHECK: after we have a fresh current & next block
   checkGameOver();
 
   // save after every move
@@ -795,6 +732,35 @@ function updateScoreAndLevel(pts) {
 
   level = Math.floor(score / 100) + 1;
   if (levelEl) levelEl.textContent = level;
+}
+
+/* ======================================================
+   GAME OVER (proper no-move logic)
+====================================================== */
+
+// helper: does a given block have any valid placement?
+function hasAnyValidMove(block) {
+  if (!block) return false;
+  const h = block.height;
+  const w = block.width;
+
+  for (let r = 0; r <= rows - h; r++) {
+    for (let c = 0; c <= cols - w; c++) {
+      if (canPlaceAt(r, c, block)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function checkGameOver() {
+  const canPlaceCurrent = hasAnyValidMove(currentBlock);
+  const canPlaceNext = hasAnyValidMove(nextBlock);
+
+  if (!canPlaceCurrent && !canPlaceNext) {
+    handleGameOver();
+  }
 }
 
 function handleGameOver() {
@@ -856,6 +822,8 @@ if (restartFromGameOverBtn) {
 function restartGame() {
   score = 0;
   level = 1;
+  comboCount = 0;
+
   if (scoreEl) scoreEl.textContent = score;
   if (levelEl) levelEl.textContent = level;
 
@@ -892,7 +860,7 @@ if (rotateBtn) {
       blockEl.classList.add("rotating");
       setTimeout(() => {
         blockEl.classList.remove("rotating");
-      }, 200); // slightly more than animation duration
+      }, 200);
     }
 
     // update ghost if dragging
