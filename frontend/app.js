@@ -21,6 +21,7 @@ const ghostEl = document.getElementById("ghost-block");
 
 const difficultySelectEl = document.getElementById("difficulty-select");
 const soundToggleBtn = document.getElementById("sound-toggle-btn");
+const themeSelectEl = document.getElementById("theme-select");
 
 // SOUND ELEMENTS
 const sndPlace = document.getElementById("snd-place");
@@ -37,6 +38,7 @@ const STATE_KEY = "woodBlockGameStateV1";
 const HIGH_SCORE_KEY = "woodBlockHighScore";
 const DIFFICULTY_KEY = "woodBlockDifficulty";
 const SOUND_ENABLED_KEY = "woodBlockSoundEnabled";
+const THEME_KEY = "woodBlockTheme";
 
 // Game state
 let grid = [];
@@ -54,6 +56,22 @@ const storedSound = localStorage.getItem(SOUND_ENABLED_KEY);
 if (storedSound !== null) {
   soundEnabled = storedSound === "true";
 }
+// THEME: wood / dark / neon
+let theme = localStorage.getItem(THEME_KEY) || "wood";
+
+// apply initial theme class
+function applyTheme(newTheme) {
+  const body = document.body;
+  const themes = ["theme-wood", "theme-dark", "theme-neon"];
+  themes.forEach((t) => body.classList.remove(t));
+  body.classList.add(`theme-${newTheme}`);
+}
+
+applyTheme(theme);
+if (themeSelectEl) {
+  themeSelectEl.value = theme;
+}
+
 
 // apply initial high score
 if (highScoreEl) highScoreEl.textContent = highScore;
@@ -334,10 +352,13 @@ function flashCells(cells) {
   cells.forEach(([r, c]) => {
     const cell = getCellElement(r, c);
     if (!cell) return;
-    cell.classList.add("just-filled");
-    setTimeout(() => cell.classList.remove("just-filled"), 250);
+    cell.classList.add("just-filled", "placed-bounce");
+    setTimeout(() => {
+      cell.classList.remove("just-filled", "placed-bounce");
+    }, 250);
   });
 }
+
 
 function sparkleCells(cells) {
   cells.forEach(([r, c]) => {
@@ -417,9 +438,19 @@ function clearCompletedLines() {
   flashCells(clearedCells);
   sparkleCells(clearedCells);
   renderBoard();
+  // small board shake on line clear
+  if (clearedCells.length > 0 && boardEl) {
+    boardEl.classList.add("board-shake");
+    setTimeout(() => {
+      boardEl.classList.remove("board-shake");
+    }, 220);
+  }
 
   return fullRows.length + fullCols.length;
 }
+
+
+
 
 // NEW: check if the entire board is empty
 function isBoardEmpty() {
@@ -914,6 +945,14 @@ if (difficultySelectEl) {
     localStorage.setItem(DIFFICULTY_KEY, difficulty);
     playSound(sndClick);
     restartGame(); // restart with new difficulty & save
+  });
+}
+if (themeSelectEl) {
+  themeSelectEl.addEventListener("change", (e) => {
+    theme = e.target.value;
+    localStorage.setItem(THEME_KEY, theme);
+    applyTheme(theme);
+    playSound(sndClick);
   });
 }
 
