@@ -571,3 +571,52 @@ body {
     transform: rotate(90deg) scale(1);
   }
 }
+/* ===============================
+   SCORE / COMBO POPUPS
+================================== */
+.score-popup {
+  position: fixed; /* stay in viewport, not tied to scroll */
+  left: 50%;
+  top: 35%;
+  transform: translate(-50%, -50%);
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #ffe69a;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
+  z-index: 9999;
+  pointer-events: none;
+  animation: score-popup-fade 900ms ease-out forwards;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.score-popup.combo {
+  background: rgba(123, 97, 255, 0.9);
+  color: #fdf4ff;
+}
+
+.score-popup.perfect {
+  background: linear-gradient(135deg, #ffb703, #ff5858);
+  color: #fff7e0;
+  font-size: 1.3rem;
+  box-shadow: 0 0 18px rgba(255, 184, 3, 0.65);
+}
+
+@keyframes score-popup-fade {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -10px) scale(0.9);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -24px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -60px) scale(1.04);
+  }
+}
+

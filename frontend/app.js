@@ -430,6 +430,20 @@ function isBoardEmpty() {
   }
   return true;
 }
+// Small floating popup for score / combo / perfect clear
+function showPopup(text, type = "") {
+  const div = document.createElement("div");
+  div.className = "score-popup";
+  if (type) div.classList.add(type);
+  div.textContent = text;
+
+  document.body.appendChild(div);
+
+  // remove after animation ends
+  setTimeout(() => {
+    div.remove();
+  }, 950);
+}
 
 /* ======================================================
    RENDER BLOCKS (CURRENT + NEXT)
@@ -657,7 +671,7 @@ function placeBlock(r, c) {
   renderBoard();
   playSound(sndPlace);
 
-  // ---------- NEW SCORING LOGIC ----------
+  // ---------- NEW SCORING + POPUPS ----------
   const cellsPlaced = newlyFilled.length;
   const linesCleared = clearCompletedLines();
 
@@ -687,7 +701,8 @@ function placeBlock(r, c) {
   }
 
   // 3) perfect clear bonus (board empty after this move)
-  if (linesCleared > 0 && isBoardEmpty()) {
+  const isPerfect = linesCleared > 0 && isBoardEmpty();
+  if (isPerfect) {
     moveScore += 50;
   }
 
@@ -699,12 +714,28 @@ function placeBlock(r, c) {
   moveScore = Math.round(moveScore * multiplier);
 
   console.log(
-    `Move: +${moveScore} (cells=${cellsPlaced}, lines=${linesCleared}, combo=${comboCount}, difficulty=${difficulty})`
+    `Move: +${moveScore} (cells=${cellsPlaced}, lines=${linesCleared}, combo=${comboCount}, difficulty=${difficulty}, perfect=${isPerfect})`
   );
+
+  // POPUPS ✨
+  // main +points popup
+  if (moveScore > 0) {
+    showPopup(`+${moveScore}`, "");
+  }
+
+  // combo popup if combo 2 or more
+  if (linesCleared > 0 && comboCount > 1) {
+    showPopup(`Combo x${comboCount}!`, "combo");
+  }
+
+  // perfect clear popup
+  if (isPerfect) {
+    showPopup("Perfect Clear! +50", "perfect");
+  }
 
   // apply to total score
   updateScoreAndLevel(moveScore);
-  // ---------- END NEW SCORING LOGIC ----------
+  // ---------- END NEW SCORING + POPUPS ----------
 
   currentBlock = null;
   renderCurrentBlock();
@@ -714,6 +745,7 @@ function placeBlock(r, c) {
   // save after every move
   saveGameState();
 }
+
 
 /* ======================================================
    SCORE & LEVEL
