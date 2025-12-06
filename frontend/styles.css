@@ -781,4 +781,62 @@ body.theme-neon .score-box {
     transform: translateX(0);
   }
 }
+/* === Theme override: block preview containers === */
+
+body.theme-dark #current-block-container,
+body.theme-dark #next-block {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 0 12px rgba(0,0,0,0.5);
+}
+
+body.theme-neon #current-block-container,
+body.theme-neon #next-block {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 22px rgba(56, 189, 248, 0.4);
+}
+/* === Theme override: preview block cells === */
+
+body.theme-dark .current-block-tray .block-cell.filled,
+body.theme-dark .block-preview .block-cell.filled {
+  background: linear-gradient(135deg, #6366f1, #22c55e);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+}
+
+body.theme-neon .current-block-tray .block-cell.filled,
+body.theme-neon .block-preview .block-cell.filled {
+  background: radial-gradient(circle, #22d3ee, #8b5cf6);
+  box-shadow:
+    0 0 12px rgba(34,211,238,0.9),
+    0 0 18px rgba(139,92,246,0.7);
+}
+/* === Theme override: auth buttons === */
+
+body.theme-dark .auth-panel .btn,
+body.theme-dark #logout-btn,
+body.theme-dark #show-users-btn {
+  background: rgba(15,23,42,0.85);
+  color: #e5e7eb;
+  border: 1px solid rgba(148,163,184,0.35);
+}
+
+body.theme-dark .auth-panel .btn.primary {
+  background: linear-gradient(135deg, #4f46e5, #22c55e);
+  color: white;
+}
+
+body.theme-neon .auth-panel .btn,
+body.theme-neon #logout-btn,
+body.theme-neon #show-users-btn {
+  background: rgba(15,23,42,0.9);
+  color: #e0f2fe;
+  border: 1px solid rgba(56,189,248,0.55);
+}
+
+body.theme-neon .auth-panel .btn.primary {
+  background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+  color: #0b1120;
+  box-shadow: 0 0 18px rgba(34,211,238,0.8);
+}
 
